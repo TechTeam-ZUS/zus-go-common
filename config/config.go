@@ -1,4 +1,4 @@
-package common
+package config
 
 import (
 	"fmt"
@@ -9,42 +9,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// MySQLConfig holds MySQL connection settings.
-type MySQLConfig struct {
-	Host            string
-	Port            string
-	User            string
-	Password        string
-	Database        string
-	MaxOpenConns    int
-	MaxIdleConns    int
-	ConnMaxLifetime time.Duration
-}
-
-// PostgreSQLConfig holds PostgreSQL connection settings.
-type PostgreSQLConfig struct {
-	Host            string
-	Port            string
-	User            string
-	Password        string
-	Database        string
-	SSLMode         string
-	MaxOpenConns    int
-	MaxIdleConns    int
-	ConnMaxLifetime time.Duration
-}
-
-// RedisConfig holds Redis connection settings.
-type RedisConfig struct {
-	Host     string
-	Port     string
-	Password string
-	DB       int
-}
-
 // LoadEnv loads environment variables from a .env file.
 // If paths are omitted, it loads ".env" from the current working directory.
-func LoadEnv(paths ...string) error {
+func Load(paths ...string) error {
 	if len(paths) == 0 {
 		return godotenv.Load()
 	}
@@ -53,7 +20,7 @@ func LoadEnv(paths ...string) error {
 }
 
 // MySQLConfigFromEnv reads MySQL settings from environment variables.
-func MySQLConfigFromEnv() MySQLConfig {
+func LoadMySQL() MySQLConfig {
 	return MySQLConfig{
 		Host:            envOrDefault("MYSQL_HOST", "localhost"),
 		Port:            envOrDefault("MYSQL_PORT", "3306"),
@@ -73,7 +40,7 @@ func (c MySQLConfig) DSN() string {
 }
 
 // PostgreSQLConfigFromEnv reads PostgreSQL settings from environment variables.
-func PostgreSQLConfigFromEnv() PostgreSQLConfig {
+func LoadPostgreSQL() PostgreSQLConfig {
 	return PostgreSQLConfig{
 		Host:            envOrDefault("POSTGRES_HOST", "localhost"),
 		Port:            envOrDefault("POSTGRES_PORT", "5432"),
@@ -94,18 +61,27 @@ func (c PostgreSQLConfig) DSN() string {
 }
 
 // RedisConfigFromEnv reads Redis settings from environment variables.
-func RedisConfigFromEnv() RedisConfig {
+func LoadRedis() RedisConfig {
 	return RedisConfig{
 		Host:     envOrDefault("REDIS_HOST", "localhost"),
 		Port:     envOrDefault("REDIS_PORT", "6379"),
 		Password: os.Getenv("REDIS_PASSWORD"),
-		DB:       envIntOrDefault("REDIS_DB", 0),
+		Username: os.Getenv("REDIS_USER"),
+		Prefix:   envOrDefault("REDIS_PREFIX", "redis"),
 	}
 }
 
 // Addr returns the Redis host:port address.
 func (c RedisConfig) Addr() string {
 	return fmt.Sprintf("%s:%s", c.Host, c.Port)
+}
+
+func LoadLogger() LoggerConfig {
+	return LoggerConfig{
+		LogLevel:    envOrDefault("LOGGER_LEVEL", "Error"),
+		ServiceName: envOrDefault("LOGGER_SERVICE_NAME", "zus-go"),
+		HandlerType: envOrDefault("LOGGER_HANDLER_TYPE", "text"),
+	}
 }
 
 func envOrDefault(key, fallback string) string {

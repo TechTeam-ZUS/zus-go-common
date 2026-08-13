@@ -1,15 +1,18 @@
-package common
+package postgres
 
 import (
 	"database/sql"
 	"fmt"
 
+	"github.com/TechTeam-ZUS/zus-go-common/config"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // SetupPostgreSQLConnection opens a PostgreSQL connection using the provided config
 // and configures the connection pool.
-func SetupPostgreSQLConnection(cfg PostgreSQLConfig) (*sql.DB, error) {
+func Init() (*sql.DB, error) {
+	cfg := config.LoadPostgreSQL()
+
 	if cfg.Database == "" {
 		return nil, fmt.Errorf("postgres database name is required")
 	}
@@ -29,10 +32,4 @@ func SetupPostgreSQLConnection(cfg PostgreSQLConfig) (*sql.DB, error) {
 	}
 
 	return db, nil
-}
-
-// SetupPostgreSQLConnectionFromEnv loads PostgreSQL settings from environment variables
-// and opens a connection.
-func SetupPostgreSQLConnectionFromEnv() (*sql.DB, error) {
-	return SetupPostgreSQLConnection(PostgreSQLConfigFromEnv())
 }

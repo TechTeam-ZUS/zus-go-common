@@ -1,15 +1,18 @@
-package common
+package mysql
 
 import (
 	"database/sql"
 	"fmt"
 
+	"github.com/TechTeam-ZUS/zus-go-common/config"
 	_ "github.com/go-sql-driver/mysql"
 )
 
 // SetupMySQLConnection opens a MySQL connection using the provided config
 // and configures the connection pool.
-func SetupMySQLConnection(cfg MySQLConfig) (*sql.DB, error) {
+func Init() (*sql.DB, error) {
+	cfg := config.LoadMySQL()
+
 	if cfg.Database == "" {
 		return nil, fmt.Errorf("mysql database name is required")
 	}
@@ -29,10 +32,4 @@ func SetupMySQLConnection(cfg MySQLConfig) (*sql.DB, error) {
 	}
 
 	return db, nil
-}
-
-// SetupMySQLConnectionFromEnv loads MySQL settings from environment variables
-// and opens a connection.
-func SetupMySQLConnectionFromEnv() (*sql.DB, error) {
-	return SetupMySQLConnection(MySQLConfigFromEnv())
 }
