@@ -10,12 +10,23 @@ import (
 
 // LoadEnv loads environment variables from a .env file.
 // If paths are omitted, it loads ".env" from the current working directory.
-func Load(paths ...string) error {
+func Load(dst any, paths ...string) error {
+	var err error
 	if len(paths) == 0 {
-		return godotenv.Load()
+		err = godotenv.Load()
+	} else {
+		err = godotenv.Load(paths...)
 	}
 
-	return godotenv.Load(paths...)
+	if err != nil {
+		return err
+	}
+
+	if dst == nil {
+		return nil
+	}
+
+	return LoadOptional(dst)
 }
 
 // MySQLConfigFromEnv reads MySQL settings from environment variables.

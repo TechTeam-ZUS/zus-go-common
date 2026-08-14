@@ -25,7 +25,8 @@ func Init() (*RedisInstance, error) {
 
 	client.AddHook(NewHook(cfg.Prefix))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	//ping timeout for 10 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := client.Ping(ctx).Err(); err != nil {
