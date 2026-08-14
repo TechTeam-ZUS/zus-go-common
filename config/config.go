@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -67,7 +66,7 @@ func LoadRedis() RedisConfig {
 		Port:     envOrDefault("REDIS_PORT", "6379"),
 		Password: os.Getenv("REDIS_PASSWORD"),
 		Username: os.Getenv("REDIS_USER"),
-		Prefix:   envOrDefault("REDIS_PREFIX", "redis"),
+		Prefix:   envOrDefault("REDIS_PREFIX", "zus-go"),
 	}
 }
 
@@ -78,39 +77,8 @@ func (c RedisConfig) Addr() string {
 
 func LoadLogger() LoggerConfig {
 	return LoggerConfig{
-		LogLevel:    envOrDefault("LOGGER_LEVEL", "Error"),
-		ServiceName: envOrDefault("LOGGER_SERVICE_NAME", "zus-go"),
-		HandlerType: envOrDefault("LOGGER_HANDLER_TYPE", "text"),
+		LogLevel:    envOrDefault("LOG_LEVEL", "Debug"),
+		ServiceName: envOrDefault("LOG_SERVICE_NAME", "zus-go"),
+		HandlerType: envOrDefault("LOG_HANDLER_TYPE", "text"),
 	}
-}
-
-func envOrDefault(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
-
-func envIntOrDefault(key string, fallback int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return fallback
-	}
-	return n
-}
-
-func envDurationOrDefault(key string, fallback time.Duration) time.Duration {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
-	}
-	d, err := time.ParseDuration(v)
-	if err != nil {
-		return fallback
-	}
-	return d
 }

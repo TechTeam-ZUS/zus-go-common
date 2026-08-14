@@ -7,21 +7,6 @@ import (
 	"github.com/TechTeam-ZUS/zus-go-common/config"
 )
 
-type LogLevel int
-
-const (
-	DEBUG LogLevel = iota
-	INFO
-	WARN
-	ERROR
-)
-
-type Logger struct {
-	logger  *slog.Logger
-	Level   LogLevel
-	Service string
-}
-
 func Init() *slog.Logger {
 	cfg := config.LoadLogger()
 
