@@ -30,7 +30,7 @@ func Init() *slog.Logger {
 
 func GetLogger() *slog.Logger {
 	if logger == nil {
-		logger = Init()
+		Init()
 	}
 
 	return logger

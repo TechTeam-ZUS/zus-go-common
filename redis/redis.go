@@ -18,7 +18,7 @@ func Init() (*RedisInstance, error) {
 	cfg := config.LoadRedis()
 
 	client := redis.NewClient(&redis.Options{
-		Addr:     cfg.Addr(),
+		Addr:     addr(cfg),
 		Password: cfg.Password,
 		Username: cfg.Username,
 	})
@@ -39,4 +39,8 @@ func Init() (*RedisInstance, error) {
 
 func (r RedisInstance) Close() error {
 	return r.Client.Close()
+}
+
+func addr(cfg config.RedisConfig) string {
+	return fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
 }

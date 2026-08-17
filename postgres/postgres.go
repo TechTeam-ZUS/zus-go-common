@@ -18,7 +18,7 @@ func Init() (*sql.DB, error) {
 		return nil, fmt.Errorf("postgres database name is required")
 	}
 
-	db, err := sql.Open("pgx", cfg.DSN())
+	db, err := sql.Open("pgx", dsn(cfg))
 	if err != nil {
 		return nil, fmt.Errorf("open postgres connection: %w", err)
 	}
@@ -37,4 +37,9 @@ func Init() (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+func dsn(cfg config.PostgreSQLConfig) string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Database, cfg.SSLMode)
 }

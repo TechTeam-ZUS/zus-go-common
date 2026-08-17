@@ -18,7 +18,7 @@ func Init() (*sql.DB, error) {
 		return nil, fmt.Errorf("mysql database name is required")
 	}
 
-	db, err := sql.Open("mysql", cfg.DSN())
+	db, err := sql.Open("mysql", dsn(cfg))
 	if err != nil {
 		return nil, fmt.Errorf("open mysql connection: %w", err)
 	}
@@ -37,4 +37,9 @@ func Init() (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+func dsn(cfg config.MySQLConfig) string {
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4",
+		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Database)
 }

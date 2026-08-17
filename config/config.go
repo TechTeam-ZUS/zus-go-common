@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -44,12 +43,6 @@ func LoadMySQL() MySQLConfig {
 	}
 }
 
-// DSN returns a MySQL data source name.
-func (c MySQLConfig) DSN() string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4",
-		c.User, c.Password, c.Host, c.Port, c.Database)
-}
-
 // PostgreSQLConfigFromEnv reads PostgreSQL settings from environment variables.
 func LoadPostgreSQL() PostgreSQLConfig {
 	return PostgreSQLConfig{
@@ -65,12 +58,6 @@ func LoadPostgreSQL() PostgreSQLConfig {
 	}
 }
 
-// DSN returns a PostgreSQL connection string.
-func (c PostgreSQLConfig) DSN() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		c.User, c.Password, c.Host, c.Port, c.Database, c.SSLMode)
-}
-
 // RedisConfigFromEnv reads Redis settings from environment variables.
 func LoadRedis() RedisConfig {
 	return RedisConfig{
@@ -80,11 +67,6 @@ func LoadRedis() RedisConfig {
 		Username: os.Getenv("REDIS_USER"),
 		Prefix:   envOrDefault("REDIS_PREFIX", "zus-go"),
 	}
-}
-
-// Addr returns the Redis host:port address.
-func (c RedisConfig) Addr() string {
-	return fmt.Sprintf("%s:%s", c.Host, c.Port)
 }
 
 func LoadLogger() LoggerConfig {
