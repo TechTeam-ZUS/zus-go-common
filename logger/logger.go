@@ -7,29 +7,47 @@ import (
 	"github.com/TechTeam-ZUS/zus-go-common/config"
 )
 
+var logger *slog.Logger
+
+var levels = map[string]slog.Level{
+	"Debug": slog.LevelDebug,
+	"Info":  slog.LevelInfo,
+	"Warn":  slog.LevelWarn,
+	"Error": slog.LevelError,
+}
+
 func Init() *slog.Logger {
 	cfg := config.LoadLogger()
 
 	handler := getHandler(cfg.HandlerType, parseLevel(cfg.LogLevel))
 
-	return slog.New(handler).With(
+	logger = slog.New(handler).With(
 		"service", cfg.ServiceName,
 	)
+
+	return logger
 }
 
-func parseLevel(level string) slog.Level {
-	switch level {
-	case "Debug":
-		return slog.LevelDebug
-	case "Info":
-		return slog.LevelInfo
-	case "Warn":
-		return slog.LevelWarn
-	case "Error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
+func getLogger() *slog.Logger {
+	if logger == nil {
+		logger = Init()
 	}
+
+	return logger
+}
+
+func Info(msg string, args ...any)  { getLogger().Info(msg, args...) }
+func Warn(msg string, args ...any)  { getLogger().Warn(msg, args...) }
+func Error(msg string, args ...any) { getLogger().Error(msg, args...) }
+func Debug(msg string, args ...any) { getLogger().Debug(msg, args...) }
+
+func parseLevel(level string) slog.Level {
+	l, ok := levels[level]
+	if !ok {
+		return slog.LevelDebug
+	}
+
+	return l
 }
 
 func getHandler(handlerType string, logLevel slog.Level) slog.Handler {

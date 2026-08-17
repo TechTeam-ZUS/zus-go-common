@@ -10,8 +10,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// SetupMySQLConnection opens a MySQL connection using the provided config
-// and configures the connection pool.
+// SetupMySQLConnection opens a MySQL connection using the provided config and configures the connection pool.
 func Init() (*sql.DB, error) {
 	cfg := config.LoadMySQL()
 

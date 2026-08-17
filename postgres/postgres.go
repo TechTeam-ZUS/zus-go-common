@@ -10,8 +10,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-// SetupPostgreSQLConnection opens a PostgreSQL connection using the provided config
-// and configures the connection pool.
+// SetupPostgreSQLConnection opens a PostgreSQL connection using the provided config and configures the connection pool.
 func Init() (*sql.DB, error) {
 	cfg := config.LoadPostgreSQL()
 
