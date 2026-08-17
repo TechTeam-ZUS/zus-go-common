@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"log/slog"
 	"os"
 
@@ -8,6 +9,10 @@ import (
 )
 
 var logger *slog.Logger
+
+type ctxKey string
+
+const loggerCtxKey ctxKey = "logger"
 
 var levels = map[string]slog.Level{
 	"Debug": slog.LevelDebug,
@@ -36,10 +41,24 @@ func GetLogger() *slog.Logger {
 	return logger
 }
 
+// WithContext stores a logger in the context.
+func WithContext(ctx context.Context, l *slog.Logger) context.Context {
+	return context.WithValue(ctx, loggerCtxKey, l)
+}
+
+// FromContext retrieves the logger from context, falling back to the global logger.
+func FromContext(ctx context.Context) *slog.Logger {
+	if l, ok := ctx.Value(loggerCtxKey).(*slog.Logger); ok {
+		return l
+	}
+	return GetLogger()
+}
+
 func Info(msg string, args ...any)  { GetLogger().Info(msg, args...) }
+func Debug(msg string, args ...any) { GetLogger().Debug(msg, args...) }
 func Warn(msg string, args ...any)  { GetLogger().Warn(msg, args...) }
 func Error(msg string, args ...any) { GetLogger().Error(msg, args...) }
-func Debug(msg string, args ...any) { GetLogger().Debug(msg, args...) }
+func Fatal(msg string, args ...any) { GetLogger().Error(msg, args...); os.Exit(1) }
 
 func parseLevel(level string) slog.Level {
 	l, ok := levels[level]
