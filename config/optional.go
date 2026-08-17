@@ -2,45 +2,43 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// LoadOptional fills dst — a pointer to a consumer-defined struct — from
-// environment variables, based on each field's `env:"KEY"` tag. Call it
-// after Load() so .env values are already present in the process
-// environment.
-//
-// The config package never needs to know what fields exist; each project
-// defines its own struct, and LoadOptional just maps tagged fields onto it.
-//
-// Supported tag options (comma-separated after the key):
-//
-//	env:"KEY"                  // unset -> zero value
-//	env:"KEY,required"         // unset -> error
-//	env:"KEY,default=value"    // unset -> fallback value
-//
-// Supported field kinds: string, bool, int/int8/../int64,
-// float32/float64, time.Duration, and []string (comma-separated).
-// Fields without an `env` tag are skipped, so consumers can mix in
-// unexported/helper fields freely.
-//
-// Example:
-//
-//	type OptionalConfig struct {
-//	    FeatureFlagX   bool          `env:"FEATURE_FLAG_X"`
-//	    MaxQueueSize   int           `env:"MAX_QUEUE_SIZE,default=100"`
-//	    CacheTTL       time.Duration `env:"CACHE_TTL,default=5m"`
-//	    PaymentWebhook string        `env:"PAYMENT_WEBHOOK_URL,required"`
-//	}
-//
-//	var Optional OptionalConfig
-//	if err := config.Load(); err != nil { ... }
-//	if err := config.LoadOptional(&Optional); err != nil { ... }
-//	Optional.MaxQueueSize // read directly, no re-parsing env
+/*
+	LoadOptional fills dst — a pointer to a consumer-defined struct — from environment variables, based on each field's `env:"KEY"` tag.
+
+	Supported tag options (comma-separated after the key):
+	env:"KEY"                  // unset -> zero value
+	env:"KEY,required"         // unset -> error
+	env:"KEY,default=value"    // unset -> fallback value
+
+	Supported field kinds:
+	string,
+	bool,
+	int/int8/../int64,
+	float32/float64,
+	time.Duration,
+	[]string (comma-separated)
+
+	**Fields without an `env` tag are skipped**
+
+	Example:
+	type OptionalConfig struct {
+	    FeatureFlagX   bool          `env:"FEATURE_FLAG_X"`
+	    MaxQueueSize   int           `env:"MAX_QUEUE_SIZE,default=100"`
+	    CacheTTL       time.Duration `env:"CACHE_TTL,default=5m"`
+	    PaymentWebhook string        `env:"PAYMENT_WEBHOOK_URL,required"`
+	}
+
+	var Optional OptionalConfig
+	if err := config.Load(); err != nil { ... }
+	if err := config.LoadOptional(&Optional); err != nil { ... }
+	mqs := Optional.MaxQueueSize ##100
+*/
 
 func LoadOptional(dst any) error {
 	v := reflect.ValueOf(dst)
@@ -58,15 +56,10 @@ func LoadOptional(dst any) error {
 		}
 
 		key, required, def := parseOptionalTag(tag)
-		raw := os.Getenv(key)
-		if raw == "" {
-			if required {
-				return fmt.Errorf("config: LoadOptional: %s: required but not set", key)
-			}
-			raw = def
-			if raw == "" {
-				continue // leave field at zero value
-			}
+		raw := envOrDefault(key, def)
+
+		if required && raw == "" {
+			return fmt.Errorf("config: LoadOptional: %s: required but not set", key)
 		}
 
 		if err := setOptionalField(v.Field(i), raw); err != nil {

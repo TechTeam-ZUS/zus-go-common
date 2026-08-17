@@ -10,6 +10,7 @@ import (
 
 // LoadEnv loads environment variables from a .env file.
 // If paths are omitted, it loads ".env" from the current working directory.
+// Fills optional config if any
 func Load(dst any, paths ...string) error {
 	var err error
 	if len(paths) == 0 {

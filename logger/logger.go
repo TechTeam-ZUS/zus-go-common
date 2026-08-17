@@ -1,4 +1,4 @@
-package common
+package logger
 
 import (
 	"log/slog"
@@ -33,13 +33,13 @@ func parseLevel(level string) slog.Level {
 }
 
 func getHandler(handlerType string, logLevel slog.Level) slog.Handler {
-	// if handlerType == "text"{
-	return slog.NewTextHandler(
-		os.Stdout,
-		&slog.HandlerOptions{
-			Level: logLevel,
-		},
-	)
-	// }
-	// todo: json handler
+	opts := &slog.HandlerOptions{
+		Level: logLevel,
+	}
+
+	if handlerType == "json" {
+		return slog.NewJSONHandler(os.Stdout, opts)
+	}
+
+	return slog.NewTextHandler(os.Stdout, opts)
 }
