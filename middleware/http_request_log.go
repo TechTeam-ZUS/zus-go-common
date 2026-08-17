@@ -21,8 +21,7 @@ type Field struct {
 	Value func(r *http.Request) any
 }
 
-// HttpRequestLogStruct configures HttpRequestLog. Set it once via Configure,
-// before registering HttpRequestLog as middleware.
+// HttpRequestLogStruct configures HttpRequestLog.
 type HttpRequestLogStruct struct {
 	// RequestID extracts the request ID (default: X-Request-Id header).
 	RequestID func(r *http.Request) string
@@ -32,57 +31,52 @@ type HttpRequestLogStruct struct {
 	LogBody bool
 }
 
-var httpRequestLogCfg = HttpRequestLogStruct{RequestID: defaultRequestID}
-
-// Configure sets the request-log configuration. Call once, before registering
-// HttpRequestLog as middleware.
-func ConfigureHttpRequestLog(c HttpRequestLogStruct) {
-	if c.RequestID == nil {
-		c.RequestID = defaultRequestID
-	}
-
-	httpRequestLogCfg = c
-}
-
 func defaultRequestID(r *http.Request) string {
 	return r.Header.Get("X-Request-Id")
 }
 
-// HttpRequestLog is stdlib-compatible middleware (func(http.Handler) http.Handler)
+// HttpRequestLog returns stdlib-compatible middleware (func(http.Handler) http.Handler)
 // that logs a start and end event per request, and attaches a request-scoped
-// logger to the request context (retrievable via logger.FromContext).
-func HttpRequestLog(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		ww := &responseRecorder{ResponseWriter: w, status: http.StatusOK, captureBody: httpRequestLogCfg.LogBody}
+// logger to the request context (retrievable via logger.FromContext). Each
+// registration can pass its own cfg, e.g. r.Use(HttpRequestLog(cfg)).
+func HttpRequestLog(cfg HttpRequestLogStruct) func(http.Handler) http.Handler {
+	if cfg.RequestID == nil {
+		cfg.RequestID = defaultRequestID
+	}
 
-		reqLogger := logger.GetLogger().With(
-			slog.String("requestId", httpRequestLogCfg.RequestID(r)),
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			ww := &responseRecorder{ResponseWriter: w, status: http.StatusOK, captureBody: cfg.LogBody}
 
-		fields := make([]any, 0, len(httpRequestLogCfg.Fields)*2)
-		for _, f := range httpRequestLogCfg.Fields {
-			fields = append(fields, f.Key, f.Value(r))
-		}
+			reqLogger := logger.GetLogger().With(
+				slog.String("requestId", cfg.RequestID(r)),
+				slog.String("method", r.Method),
+				slog.String("path", r.URL.Path),
+			)
 
-		reqLogger.Info(RequestStartTrace, slog.Group("context", fields...))
+			fields := make([]any, 0, len(cfg.Fields)*2)
+			for _, f := range cfg.Fields {
+				fields = append(fields, f.Key, f.Value(r))
+			}
 
-		ctx := logger.WithContext(r.Context(), reqLogger)
-		next.ServeHTTP(ww, r.WithContext(ctx))
+			reqLogger.Info(RequestStartTrace, slog.Group("context", fields...))
 
-		endFields := append(fields,
-			"http_status", ww.status,
-			"duration_ms", float64(time.Since(start).Microseconds())/1000,
-			"size_kb", float64(ww.size)/1024,
-		)
-		if httpRequestLogCfg.LogBody {
-			endFields = append(endFields, "response_body", ww.body.String())
-		}
+			ctx := logger.WithContext(r.Context(), reqLogger)
+			next.ServeHTTP(ww, r.WithContext(ctx))
 
-		reqLogger.Info(RequestEndTrace, slog.Group("context", endFields...))
-	})
+			endFields := append(fields,
+				"http_status", ww.status,
+				"duration_ms", float64(time.Since(start).Microseconds())/1000,
+				"size_kb", float64(ww.size)/1024,
+			)
+			if cfg.LogBody {
+				endFields = append(endFields, "response_body", ww.body.String())
+			}
+
+			reqLogger.Info(RequestEndTrace, slog.Group("context", endFields...))
+		})
+	}
 }
 
 // responseRecorder wraps http.ResponseWriter to capture status, size, and optionally the body.
