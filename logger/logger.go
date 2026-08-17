@@ -28,7 +28,7 @@ func Init() *slog.Logger {
 	return logger
 }
 
-func getLogger() *slog.Logger {
+func GetLogger() *slog.Logger {
 	if logger == nil {
 		logger = Init()
 	}
@@ -36,10 +36,10 @@ func getLogger() *slog.Logger {
 	return logger
 }
 
-func Info(msg string, args ...any)  { getLogger().Info(msg, args...) }
-func Warn(msg string, args ...any)  { getLogger().Warn(msg, args...) }
-func Error(msg string, args ...any) { getLogger().Error(msg, args...) }
-func Debug(msg string, args ...any) { getLogger().Debug(msg, args...) }
+func Info(msg string, args ...any)  { GetLogger().Info(msg, args...) }
+func Warn(msg string, args ...any)  { GetLogger().Warn(msg, args...) }
+func Error(msg string, args ...any) { GetLogger().Error(msg, args...) }
+func Debug(msg string, args ...any) { GetLogger().Debug(msg, args...) }
 
 func parseLevel(level string) slog.Level {
 	l, ok := levels[level]
