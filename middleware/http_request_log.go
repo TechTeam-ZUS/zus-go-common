@@ -18,13 +18,13 @@ const (
 // Consumers own how it's derived (chi route pattern, JWT claims, custom headers, etc.).
 type Field struct {
 	Key   string
-	Value func(r *http.Request) any
+	Value any
 }
 
 // Config configures LogHTTPRequest.
 type HttpRequestLogStruct struct {
 	// RequestID extracts the request ID (default: X-Request-Id header).
-	RequestID func(r *http.Request) string
+	RequestID string
 	// Fields are extra fields logged on both the start and end events, in order.
 	Fields []Field
 	// LogBody captures the response body on the end-of-request log.
@@ -38,24 +38,23 @@ func defaultRequestID(r *http.Request) string {
 // LogHTTPRequest returns stdlib-compatible middleware (func(http.Handler) http.Handler)
 // that logs a start and end event per request. It has no router/framework dependency.
 func HttpRequestLog(hrls HttpRequestLogStruct) func(http.Handler) http.Handler {
-	if hrls.RequestID == nil {
-		hrls.RequestID = defaultRequestID
-	}
-
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			ww := &responseRecorder{ResponseWriter: w, status: http.StatusOK, captureBody: hrls.LogBody}
+			if hrls.RequestID == "" {
+				hrls.RequestID = defaultRequestID(r)
+			}
 
 			reqLogger := logger.GetLogger().With(
-				slog.String("requestId", hrls.RequestID(r)),
+				slog.String("requestId", hrls.RequestID),
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
 			)
 
 			fields := make([]any, 0, len(hrls.Fields)*2)
 			for _, f := range hrls.Fields {
-				fields = append(fields, f.Key, f.Value(r))
+				fields = append(fields, f.Key, f.Value)
 			}
 
 			reqLogger.Info(RequestStartTrace, slog.Group("context", fields...))
