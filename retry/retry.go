@@ -11,6 +11,8 @@ const RetryDelay = 2 * time.Second
 // Do calls fn up to attempts times, waiting delay between tries. name to identifies what's being retried in the log line.
 // Returns nil on first success, or the last error if every attempt fails.
 func Do(attempts int, delay time.Duration, fn func() error, name string) error {
+	doStart := time.Now()
+
 	if attempts < 1 {
 		attempts = 1
 	}
@@ -26,5 +28,8 @@ func Do(attempts int, delay time.Duration, fn func() error, name string) error {
 			time.Sleep(delay)
 		}
 	}
+	doEnd := time.Now()
+
+	logger.ErrorfWithNotifier(name, "**Retry failed**\nAttempts: %d\nDuration: %fs", attempts, doEnd.Sub(doStart).Seconds())
 	return err
 }

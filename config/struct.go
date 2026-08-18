@@ -2,6 +2,10 @@ package config
 
 import "time"
 
+// type OptionalConfig struct {
+// 	notificationBot string `env:"NOTIFICATION_BOT"`
+// }
+
 // MySQL Config
 type MySQLConfig struct {
 	Host            string

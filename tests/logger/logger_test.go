@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/TechTeam-ZUS/zus-go-common/logger"
+	"github.com/TechTeam-ZUS/zus-go-common/notify"
 )
 
 // GetLogger has no varying input/output to table-drive; assert directly.
@@ -122,6 +125,47 @@ func TestWithContextAndFromContext(t *testing.T) {
 			} else {
 				assert.Same(t, logger.GetLogger(), got)
 			}
+		})
+	}
+}
+
+func TestWithNotifier(t *testing.T) {
+	tests := []struct {
+		name             string
+		log              func(title string)
+		expectedTemplate string
+	}{
+		{
+			name:             "WarnfWithNotifier sends orange alert",
+			log:              func(title string) { logger.WarnfWithNotifier(title, "retrying %s", "mysql") },
+			expectedTemplate: notify.TemplateOrange,
+		},
+		{
+			name:             "ErrorfWithNotifier sends red alert",
+			log:              func(title string) { logger.ErrorfWithNotifier(title, "failed: %s", "boom") },
+			expectedTemplate: notify.TemplateRed,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var captured map[string]any
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&captured))
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			notify.NewBot(srv.URL, "svc")
+			logger.Init()
+
+			tt.log("alert-title")
+
+			require.NotNil(t, captured)
+			card := captured["card"].(map[string]any)
+			header := card["header"].(map[string]any)
+			assert.Equal(t, tt.expectedTemplate, header["template"])
+			assert.Contains(t, header["title"].(map[string]any)["content"].(string), "alert-title")
 		})
 	}
 }

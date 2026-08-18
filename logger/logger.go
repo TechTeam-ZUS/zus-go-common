@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/TechTeam-ZUS/zus-go-common/config"
+	"github.com/TechTeam-ZUS/zus-go-common/notify"
 )
 
 var logger *slog.Logger
@@ -57,20 +58,52 @@ func FromContext(ctx context.Context) *slog.Logger {
 
 func Info(msg string, args ...any)  { GetLogger().Info(msg, args...) }
 func Debug(msg string, args ...any) { GetLogger().Debug(msg, args...) }
-func Warn(msg string, args ...any)  { GetLogger().Warn(msg, args...) }
-func Error(msg string, args ...any) { GetLogger().Error(msg, args...) }
-func Fatal(msg string, args ...any) { GetLogger().Error(msg, args...); os.Exit(1) }
+
+func Warn(msg string, args ...any) {
+	GetLogger().Warn(msg, args...)
+}
+
+func Error(msg string, args ...any) {
+	GetLogger().Error(msg, args...)
+}
+
+func Fatal(msg string, args ...any) {
+	GetLogger().Error(msg, args...)
+	os.Exit(1)
+}
 
 // Infof, Debugf, Warnf, Errorf, and Fatalf are printf-style variants: format
 // is resolved via fmt.Sprintf before logging, for callers building a message
 // dynamically instead of attaching structured key-value fields.
 func Infof(format string, args ...any)  { GetLogger().Info(fmt.Sprintf(format, args...)) }
 func Debugf(format string, args ...any) { GetLogger().Debug(fmt.Sprintf(format, args...)) }
-func Warnf(format string, args ...any)  { GetLogger().Warn(fmt.Sprintf(format, args...)) }
-func Errorf(format string, args ...any) { GetLogger().Error(fmt.Sprintf(format, args...)) }
+
+func Warnf(format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	GetLogger().Warn(msg)
+}
+
+func Errorf(format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	GetLogger().Error(msg)
+}
+
 func Fatalf(format string, args ...any) {
-	GetLogger().Error(fmt.Sprintf(format, args...))
+	msg := fmt.Sprintf(format, args...)
+	GetLogger().Error(msg)
 	os.Exit(1)
+}
+
+func WarnfWithNotifier(title, format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	GetLogger().Warn(msg)
+	notify.GetBot().Notify(slog.LevelWarn, title, msg)
+}
+
+func ErrorfWithNotifier(title, format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	GetLogger().Error(msg)
+	notify.GetBot().Notify(slog.LevelError, title, msg)
 }
 
 func parseLevel(level string) slog.Level {
@@ -91,5 +124,5 @@ func getHandler(handlerType string, logLevel slog.Level) slog.Handler {
 		return slog.NewJSONHandler(os.Stdout, opts)
 	}
 
-	return slog.NewTextHandler(os.Stdout, opts)
+	return newTextHandler(os.Stdout, logLevel)
 }
