@@ -70,6 +70,18 @@ func main() {
 
 Connection pool settings, credentials, and other tuning are read from environment variables — see [Environment Variables](#environment-variables).
 
+## Connection retries
+
+`mysql.Init()`, `postgres.Init()`, and `cache.Init()` each retry their connect-and-ping step `*_RETRY_COUNT` times (2s delay between attempts) before giving up. Exhausting all retries is fatal — it logs and calls `os.Exit(1)` via `logger.Fatal`, so callers don't need their own retry loop or fatal-on-error handling.
+
+## Cache convenience methods
+
+`CacheInstance` exposes `Get`, `Set`, and `Ping` directly — no need to write your own thin wrapper around `.Client`. For any other Redis command, use `Do`:
+
+```go
+val, err := cacheInstance.Do(ctx, "expire", "key", 60).Result()
+```
+
 ## Custom / optional config
 
 Beyond the built-in MySQL, PostgreSQL, cache, and logger config, `config.Load` can also populate a consumer-defined struct from environment variables using an `env` struct tag:
@@ -116,6 +128,7 @@ Supported field types: `string`, `bool`, all integer kinds, `float32`/`float64`,
 | `MYSQL_MAX_OPEN_CONNS` | `25` | No |
 | `MYSQL_MAX_IDLE_CONNS` | `10` | No |
 | `MYSQL_CONN_MAX_LIFETIME` | `5m` | No |
+| `MYSQL_RETRY_COUNT` | `3` | No |
 
 ### PostgreSQL
 
@@ -130,6 +143,7 @@ Supported field types: `string`, `bool`, all integer kinds, `float32`/`float64`,
 | `POSTGRES_MAX_OPEN_CONNS` | `25` | No |
 | `POSTGRES_MAX_IDLE_CONNS` | `10` | No |
 | `POSTGRES_CONN_MAX_LIFETIME` | `5m` | No |
+| `POSTGRES_RETRY_COUNT` | `3` | No |
 
 ### Cache
 
@@ -140,6 +154,7 @@ Supported field types: `string`, `bool`, all integer kinds, `float32`/`float64`,
 | `CACHE_USER` | — | No |
 | `CACHE_PASSWORD` | — | No |
 | `CACHE_PREFIX` | `zus-go` | No |
+| `CACHE_RETRY_COUNT` | `3` | No |
 
 ### Logger
 
@@ -178,8 +193,12 @@ Supported field types: `string`, `bool`, all integer kinds, `float32`/`float64`,
 
 | Function | Description |
 |----------|-------------|
-| `Init() (*CacheInstance, error)` | Reads cache config from env, creates and pings a client with the key-prefixing hook attached. |
-| `(CacheInstance) Close() error` | Closes the underlying client. |
+| `Init() (*CacheInstance, error)` | Reads cache config from env, creates and pings a client with the key-prefixing hook attached. Retries on connect failure; fatal if exhausted. |
+| `(*CacheInstance) Get(ctx, key) ([]byte, error)` | Gets a value. |
+| `(*CacheInstance) Set(ctx, key, value, expiration) error` | Sets a value. |
+| `(*CacheInstance) Ping(ctx) error` | Checks connectivity. |
+| `(*CacheInstance) Do(ctx, args ...any) *redis.Cmd` | Executes any other cache command. |
+| `(*CacheInstance) Close() error` | Closes the underlying client. |
 
 ### logger
 

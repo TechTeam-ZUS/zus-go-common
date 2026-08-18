@@ -21,7 +21,7 @@ func TestLoadMySQL(t *testing.T) {
 			env:  map[string]string{},
 			expected: config.MySQLConfig{
 				Host: "localhost", Port: "3306", User: "root",
-				MaxOpenConns: 25, MaxIdleConns: 10, ConnMaxLifetime: 5 * time.Minute,
+				MaxOpenConns: 25, MaxIdleConns: 10, ConnMaxLifetime: 5 * time.Minute, RetryCount: 3,
 			},
 		},
 		{
@@ -30,11 +30,11 @@ func TestLoadMySQL(t *testing.T) {
 				"MYSQL_HOST": "db.internal", "MYSQL_PORT": "3307", "MYSQL_USER": "svc",
 				"MYSQL_PASSWORD": "secret", "MYSQL_DATABASE": "app",
 				"MYSQL_MAX_OPEN_CONNS": "50", "MYSQL_MAX_IDLE_CONNS": "5",
-				"MYSQL_CONN_MAX_LIFETIME": "1m",
+				"MYSQL_CONN_MAX_LIFETIME": "1m", "MYSQL_RETRY_COUNT": "5",
 			},
 			expected: config.MySQLConfig{
 				Host: "db.internal", Port: "3307", User: "svc", Password: "secret", Database: "app",
-				MaxOpenConns: 50, MaxIdleConns: 5, ConnMaxLifetime: time.Minute,
+				MaxOpenConns: 50, MaxIdleConns: 5, ConnMaxLifetime: time.Minute, RetryCount: 5,
 			},
 		},
 		{
@@ -45,7 +45,7 @@ func TestLoadMySQL(t *testing.T) {
 			},
 			expected: config.MySQLConfig{
 				Host: "localhost", Port: "3306", User: "root",
-				MaxOpenConns: 25, MaxIdleConns: 10, ConnMaxLifetime: 5 * time.Minute,
+				MaxOpenConns: 25, MaxIdleConns: 10, ConnMaxLifetime: 5 * time.Minute, RetryCount: 3,
 			},
 		},
 	}
@@ -71,7 +71,7 @@ func TestLoadPostgreSQL(t *testing.T) {
 			env:  map[string]string{},
 			expected: config.PostgreSQLConfig{
 				Host: "localhost", Port: "5432", User: "postgres", SSLMode: "disable",
-				MaxOpenConns: 25, MaxIdleConns: 10, ConnMaxLifetime: 5 * time.Minute,
+				MaxOpenConns: 25, MaxIdleConns: 10, ConnMaxLifetime: 5 * time.Minute, RetryCount: 3,
 			},
 		},
 		{
@@ -79,10 +79,11 @@ func TestLoadPostgreSQL(t *testing.T) {
 			env: map[string]string{
 				"POSTGRES_HOST": "pg.internal", "POSTGRES_PORT": "5433", "POSTGRES_USER": "svc",
 				"POSTGRES_PASSWORD": "secret", "POSTGRES_DATABASE": "app", "POSTGRES_SSLMODE": "require",
+				"POSTGRES_RETRY_COUNT": "5",
 			},
 			expected: config.PostgreSQLConfig{
 				Host: "pg.internal", Port: "5433", User: "svc", Password: "secret", Database: "app",
-				SSLMode: "require", MaxOpenConns: 25, MaxIdleConns: 10, ConnMaxLifetime: 5 * time.Minute,
+				SSLMode: "require", MaxOpenConns: 25, MaxIdleConns: 10, ConnMaxLifetime: 5 * time.Minute, RetryCount: 5,
 			},
 		},
 	}
@@ -106,16 +107,17 @@ func TestLoadCache(t *testing.T) {
 		{
 			name:     "defaults",
 			env:      map[string]string{},
-			expected: config.CacheConfig{Host: "localhost", Port: "6379", Prefix: "zus-go"},
+			expected: config.CacheConfig{Host: "localhost", Port: "6379", Prefix: "zus-go", RetryCount: 3},
 		},
 		{
 			name: "env overrides",
 			env: map[string]string{
 				"CACHE_HOST": "cache.internal", "CACHE_PORT": "6380",
 				"CACHE_PASSWORD": "secret", "CACHE_USER": "svc", "CACHE_PREFIX": "custom",
+				"CACHE_RETRY_COUNT": "5",
 			},
 			expected: config.CacheConfig{
-				Host: "cache.internal", Port: "6380", Password: "secret", Username: "svc", Prefix: "custom",
+				Host: "cache.internal", Port: "6380", Password: "secret", Username: "svc", Prefix: "custom", RetryCount: 5,
 			},
 		},
 	}

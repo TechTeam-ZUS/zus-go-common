@@ -7,10 +7,13 @@ import (
 	"time"
 
 	"github.com/TechTeam-ZUS/zus-go-common/config"
+	"github.com/TechTeam-ZUS/zus-go-common/logger"
+	"github.com/TechTeam-ZUS/zus-go-common/retry"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // SetupPostgreSQLConnection opens a PostgreSQL connection using the provided config and configures the connection pool.
+// Retries cfg.RetryCount times before giving up; exhausting retries is fatal.
 func Init() (*sql.DB, error) {
 	cfg := config.LoadPostgreSQL()
 
@@ -18,22 +21,31 @@ func Init() (*sql.DB, error) {
 		return nil, fmt.Errorf("postgres database name is required")
 	}
 
-	db, err := sql.Open("pgx", dsn(cfg))
+	var db *sql.DB
+	err := retry.Do(cfg.RetryCount, retry.RetryDelay, func() error {
+		var openErr error
+		db, openErr = sql.Open("pgx", dsn(cfg))
+		if openErr != nil {
+			return fmt.Errorf("open postgres connection: %w", openErr)
+		}
+
+		db.SetMaxOpenConns(cfg.MaxOpenConns)
+		db.SetMaxIdleConns(cfg.MaxIdleConns)
+		db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+
+		//ping timeout for 10 seconds
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if pingErr := db.PingContext(ctx); pingErr != nil {
+			_ = db.Close()
+			return fmt.Errorf("ping postgres: %w", pingErr)
+		}
+		return nil
+	})
+
 	if err != nil {
-		return nil, fmt.Errorf("open postgres connection: %w", err)
-	}
-
-	db.SetMaxOpenConns(cfg.MaxOpenConns)
-	db.SetMaxIdleConns(cfg.MaxIdleConns)
-	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
-
-	//ping timeout for 10 seconds
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := db.PingContext(ctx); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("ping postgres: %w", err)
+		logger.Fatal("postgres: failed to connect after retries", "error", err.Error())
 	}
 
 	return db, nil

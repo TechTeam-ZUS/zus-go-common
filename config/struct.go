@@ -12,6 +12,7 @@ type MySQLConfig struct {
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
+	RetryCount      int
 }
 
 // Postgre Config
@@ -25,15 +26,17 @@ type PostgreSQLConfig struct {
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
+	RetryCount      int
 }
 
 // Cache Config
 type CacheConfig struct {
-	Host     string
-	Port     string
-	Password string
-	Username string
-	Prefix   string
+	Host       string
+	Port       string
+	Password   string
+	Username   string
+	Prefix     string
+	RetryCount int
 }
 
 // Logger Config

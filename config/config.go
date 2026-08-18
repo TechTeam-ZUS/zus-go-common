@@ -40,6 +40,7 @@ func LoadMySQL() MySQLConfig {
 		MaxOpenConns:    envIntOrDefault("MYSQL_MAX_OPEN_CONNS", 25),
 		MaxIdleConns:    envIntOrDefault("MYSQL_MAX_IDLE_CONNS", 10),
 		ConnMaxLifetime: envDurationOrDefault("MYSQL_CONN_MAX_LIFETIME", 5*time.Minute),
+		RetryCount:      envIntOrDefault("MYSQL_RETRY_COUNT", 3),
 	}
 }
 
@@ -55,17 +56,19 @@ func LoadPostgreSQL() PostgreSQLConfig {
 		MaxOpenConns:    envIntOrDefault("POSTGRES_MAX_OPEN_CONNS", 25),
 		MaxIdleConns:    envIntOrDefault("POSTGRES_MAX_IDLE_CONNS", 10),
 		ConnMaxLifetime: envDurationOrDefault("POSTGRES_CONN_MAX_LIFETIME", 5*time.Minute),
+		RetryCount:      envIntOrDefault("POSTGRES_RETRY_COUNT", 3),
 	}
 }
 
 // CacheConfigFromEnv reads cache settings from environment variables.
 func LoadCache() CacheConfig {
 	return CacheConfig{
-		Host:     envOrDefault("CACHE_HOST", "localhost"),
-		Port:     envOrDefault("CACHE_PORT", "6379"),
-		Password: os.Getenv("CACHE_PASSWORD"),
-		Username: os.Getenv("CACHE_USER"),
-		Prefix:   envOrDefault("CACHE_PREFIX", "zus-go"),
+		Host:       envOrDefault("CACHE_HOST", "localhost"),
+		Port:       envOrDefault("CACHE_PORT", "6379"),
+		Password:   os.Getenv("CACHE_PASSWORD"),
+		Username:   os.Getenv("CACHE_USER"),
+		Prefix:     envOrDefault("CACHE_PREFIX", "zus-go"),
+		RetryCount: envIntOrDefault("CACHE_RETRY_COUNT", 3),
 	}
 }
 

@@ -362,6 +362,48 @@ func TestCacheInstance_SortedSetCommands(t *testing.T) {
 	})
 }
 
+func TestCacheInstance_Methods(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(t *testing.T, ctx context.Context, instance *cache.CacheInstance, mr *miniredis.Miniredis)
+	}{
+		{
+			name: "Set and Get",
+			run: func(t *testing.T, ctx context.Context, instance *cache.CacheInstance, mr *miniredis.Miniredis) {
+				require.NoError(t, instance.Set(ctx, "m1", "v1", 0))
+				assertPrefixed(t, mr, "m1")
+				got, err := instance.Get(ctx, "m1")
+				require.NoError(t, err)
+				assert.Equal(t, "v1", string(got))
+			},
+		},
+		{
+			name: "Ping",
+			run: func(t *testing.T, ctx context.Context, instance *cache.CacheInstance, mr *miniredis.Miniredis) {
+				assert.NoError(t, instance.Ping(ctx))
+			},
+		},
+		{
+			name: "Do executes an arbitrary command",
+			run: func(t *testing.T, ctx context.Context, instance *cache.CacheInstance, mr *miniredis.Miniredis) {
+				require.NoError(t, instance.Set(ctx, "m2", "v2", 0))
+				val, err := instance.Do(ctx, "get", "m2").Text()
+				require.NoError(t, err)
+				assert.Equal(t, "v2", val)
+				assertPrefixed(t, mr, "m2")
+			},
+		},
+	}
+
+	instance, mr := newTestInstance(t)
+	ctx := context.Background()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t, ctx, instance, mr)
+		})
+	}
+}
+
 func TestCacheInstance_Close(t *testing.T) {
 	instance, _ := newTestInstance(t)
 	assert.NoError(t, instance.Close())

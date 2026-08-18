@@ -7,10 +7,13 @@ import (
 	"time"
 
 	"github.com/TechTeam-ZUS/zus-go-common/config"
+	"github.com/TechTeam-ZUS/zus-go-common/logger"
+	"github.com/TechTeam-ZUS/zus-go-common/retry"
 	_ "github.com/go-sql-driver/mysql"
 )
 
 // SetupMySQLConnection opens a MySQL connection using the provided config and configures the connection pool.
+// Retries cfg.RetryCount times before giving up; exhausting retries is fatal.
 func Init() (*sql.DB, error) {
 	cfg := config.LoadMySQL()
 
@@ -18,22 +21,31 @@ func Init() (*sql.DB, error) {
 		return nil, fmt.Errorf("mysql database name is required")
 	}
 
-	db, err := sql.Open("mysql", dsn(cfg))
+	var db *sql.DB
+	err := retry.Do(cfg.RetryCount, retry.RetryDelay, func() error {
+		var openErr error
+		db, openErr = sql.Open("mysql", dsn(cfg))
+		if openErr != nil {
+			return fmt.Errorf("open mysql connection: %w", openErr)
+		}
+
+		db.SetMaxOpenConns(cfg.MaxOpenConns)
+		db.SetMaxIdleConns(cfg.MaxIdleConns)
+		db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+
+		//ping timeout for 10 seconds
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if pingErr := db.PingContext(ctx); pingErr != nil {
+			_ = db.Close()
+			return fmt.Errorf("ping mysql: %w", pingErr)
+		}
+		return nil
+	})
+
 	if err != nil {
-		return nil, fmt.Errorf("open mysql connection: %w", err)
-	}
-
-	db.SetMaxOpenConns(cfg.MaxOpenConns)
-	db.SetMaxIdleConns(cfg.MaxIdleConns)
-	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
-
-	//ping timeout for 10 seconds
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := db.PingContext(ctx); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("ping mysql: %w", err)
+		logger.Fatal("mysql: failed to connect after retries", "error", err.Error())
 	}
 
 	return db, nil
