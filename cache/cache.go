@@ -1,4 +1,4 @@
-package redis
+package cache
 
 import (
 	"context"
@@ -9,13 +9,15 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-type RedisInstance struct {
+type CacheInstance struct {
 	Client *redis.Client
 }
 
-// SetupRedisConnection creates a Redis client using the provided config
-func Init() (*RedisInstance, error) {
-	cfg := config.LoadRedis()
+// Init creates a cache client using the provided config. Uses the go-redis
+// driver, which speaks the Redis protocol and is compatible with Redis and
+// Valkey servers alike.
+func Init() (*CacheInstance, error) {
+	cfg := config.LoadCache()
 
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr(cfg),
@@ -31,16 +33,16 @@ func Init() (*RedisInstance, error) {
 
 	if err := client.Ping(ctx).Err(); err != nil {
 		_ = client.Close()
-		return nil, fmt.Errorf("ping redis: %w", err)
+		return nil, fmt.Errorf("ping cache: %w", err)
 	}
 
-	return &RedisInstance{client}, nil
+	return &CacheInstance{client}, nil
 }
 
-func (r RedisInstance) Close() error {
-	return r.Client.Close()
+func (c CacheInstance) Close() error {
+	return c.Client.Close()
 }
 
-func addr(cfg config.RedisConfig) string {
+func addr(cfg config.CacheConfig) string {
 	return fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
 }

@@ -58,14 +58,14 @@ func LoadPostgreSQL() PostgreSQLConfig {
 	}
 }
 
-// RedisConfigFromEnv reads Redis settings from environment variables.
-func LoadRedis() RedisConfig {
-	return RedisConfig{
-		Host:     envOrDefault("REDIS_HOST", "localhost"),
-		Port:     envOrDefault("REDIS_PORT", "6379"),
-		Password: os.Getenv("REDIS_PASSWORD"),
-		Username: os.Getenv("REDIS_USER"),
-		Prefix:   envOrDefault("REDIS_PREFIX", "zus-go"),
+// CacheConfigFromEnv reads cache settings from environment variables.
+func LoadCache() CacheConfig {
+	return CacheConfig{
+		Host:     envOrDefault("CACHE_HOST", "localhost"),
+		Port:     envOrDefault("CACHE_PORT", "6379"),
+		Password: os.Getenv("CACHE_PASSWORD"),
+		Username: os.Getenv("CACHE_USER"),
+		Prefix:   envOrDefault("CACHE_PREFIX", "zus-go"),
 	}
 }
 

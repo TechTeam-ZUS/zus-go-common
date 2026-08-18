@@ -27,8 +27,8 @@ type PostgreSQLConfig struct {
 	ConnMaxLifetime time.Duration
 }
 
-// Redis Config
-type RedisConfig struct {
+// Cache Config
+type CacheConfig struct {
 	Host     string
 	Port     string
 	Password string

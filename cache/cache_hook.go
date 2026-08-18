@@ -1,7 +1,7 @@
-// Package prefixhook provides a redis.Hook that transparently prefixes
-// every key with a fixed namespace (e.g. "myapp:") so callers never need
-// to build the prefixed key themselves.
-package redis
+// Package cache provides a redis.Hook that transparently prefixes every key
+// with a fixed namespace (e.g. "myapp:") so callers never need to build the
+// prefixed key themselves.
+package cache
 
 import (
 	"context"
@@ -22,7 +22,7 @@ var isSingleKeyCmdMap = map[string]bool{
 	"del": false, "unlink": false, "exists": true, "mget": false,
 }
 
-// Hook prefixes Redis keys with Prefix + ":" for every command it recognizes.
+// Hook prefixes cache keys with Prefix + ":" for every command it recognizes.
 // Unrecognized commands (SCAN, PING, INFO, etc.) pass through untouched.
 type Hook struct {
 	prefix string
@@ -64,7 +64,7 @@ func (h *Hook) rewrite(cmd redis.Cmder) {
 	}
 }
 
-// implementations of redis hook interfaces to insert key prefix
+// implementations of redis.Hook interfaces to insert key prefix
 func (h *Hook) DialHook(next redis.DialHook) redis.DialHook {
 	return next
 }

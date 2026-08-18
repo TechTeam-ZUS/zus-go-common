@@ -15,10 +15,10 @@ go get github.com/TechTeam-ZUS/zus-go-common
 | `config` | Loads `.env` and env-backed config for every package |
 | `mysql`  | MySQL connection pool setup                          |
 | `postgres` | PostgreSQL connection pool setup                   |
-| `redis`  | Redis client setup, with automatic key prefixing     |
+| `cache`  | Cache client setup (Redis/Valkey-protocol), with automatic key prefixing |
 | `logger` | `slog`-based structured logger setup                 |
 
-Each of `mysql`, `postgres`, `redis`, and `logger` reads its own configuration from environment variables internally — call `config.Load()` once at startup, then call `Init()` on whichever packages you need.
+Each of `mysql`, `postgres`, `cache`, and `logger` reads its own configuration from environment variables internally — call `config.Load()` once at startup, then call `Init()` on whichever packages you need.
 
 ## Usage
 
@@ -28,11 +28,11 @@ package main
 import (
     "log"
 
+    "github.com/TechTeam-ZUS/zus-go-common/cache"
     "github.com/TechTeam-ZUS/zus-go-common/config"
     "github.com/TechTeam-ZUS/zus-go-common/logger"
     "github.com/TechTeam-ZUS/zus-go-common/mysql"
     "github.com/TechTeam-ZUS/zus-go-common/postgres"
-    "github.com/TechTeam-ZUS/zus-go-common/redis"
 )
 
 func main() {
@@ -57,22 +57,22 @@ func main() {
     }
     defer pgDB.Close()
 
-    redisInstance, err := redis.Init()
+    cacheInstance, err := cache.Init()
     if err != nil {
-        log.Error("redis init failed", "error", err)
+        log.Error("cache init failed", "error", err)
         return
     }
-    defer redisInstance.Close()
+    defer cacheInstance.Close()
 }
 ```
 
-`mysql.Init()` and `postgres.Init()` return a standard `*sql.DB`, already pinged and pool-configured. `redis.Init()` returns a `*redis.RedisInstance` wrapping a `*redis.Client` (see [Redis key prefixing](#redis-key-prefixing) below). `logger.Init()` returns a `*slog.Logger`.
+`mysql.Init()` and `postgres.Init()` return a standard `*sql.DB`, already pinged and pool-configured. `cache.Init()` returns a `*cache.CacheInstance` wrapping a `*redis.Client` from the go-redis driver — compatible with both Redis and Valkey servers (see [Cache key prefixing](#cache-key-prefixing) below). `logger.Init()` returns a `*slog.Logger`.
 
 Connection pool settings, credentials, and other tuning are read from environment variables — see [Environment Variables](#environment-variables).
 
 ## Custom / optional config
 
-Beyond the built-in MySQL, PostgreSQL, Redis, and logger config, `config.Load` can also populate a consumer-defined struct from environment variables using an `env` struct tag:
+Beyond the built-in MySQL, PostgreSQL, cache, and logger config, `config.Load` can also populate a consumer-defined struct from environment variables using an `env` struct tag:
 
 ```go
 type MyConfig struct {
@@ -98,9 +98,9 @@ Tag options (comma-separated after the key):
 
 Supported field types: `string`, `bool`, all integer kinds, `float32`/`float64`, `time.Duration`, and `[]string` (comma-separated values). Fields without an `env` tag are left untouched. Pass `nil` to `config.Load` if you only need the built-in configs and have no custom struct.
 
-## Redis key prefixing
+## Cache key prefixing
 
-`redis.Init()` attaches a hook that automatically prefixes every key with `REDIS_PREFIX + ":"` for common single- and multi-key commands (`GET`, `SET`, `HSET`, `DEL`, `MGET`, etc.). Callers don't need to build the prefixed key themselves — just use normal key names and the client namespaces them transparently. Unrecognized commands (`SCAN`, `PING`, `INFO`, etc.) pass through unchanged.
+`cache.Init()` attaches a hook that automatically prefixes every key with `CACHE_PREFIX + ":"` for common single- and multi-key commands (`GET`, `SET`, `HSET`, `DEL`, `MGET`, etc.). Callers don't need to build the prefixed key themselves — just use normal key names and the client namespaces them transparently. Unrecognized commands (`SCAN`, `PING`, `INFO`, etc.) pass through unchanged.
 
 ## Environment Variables
 
@@ -131,15 +131,15 @@ Supported field types: `string`, `bool`, all integer kinds, `float32`/`float64`,
 | `POSTGRES_MAX_IDLE_CONNS` | `10` | No |
 | `POSTGRES_CONN_MAX_LIFETIME` | `5m` | No |
 
-### Redis
+### Cache
 
 | Variable | Default | Required |
 |----------|---------|----------|
-| `REDIS_HOST` | `localhost` | No |
-| `REDIS_PORT` | `6379` | No |
-| `REDIS_USER` | — | No |
-| `REDIS_PASSWORD` | — | No |
-| `REDIS_PREFIX` | `zus-go` | No |
+| `CACHE_HOST` | `localhost` | No |
+| `CACHE_PORT` | `6379` | No |
+| `CACHE_USER` | — | No |
+| `CACHE_PASSWORD` | — | No |
+| `CACHE_PREFIX` | `zus-go` | No |
 
 ### Logger
 
@@ -159,7 +159,7 @@ Supported field types: `string`, `bool`, all integer kinds, `float32`/`float64`,
 | `LoadOptional(dst any) error` | Fills a consumer-defined struct from env vars using `env` tags. Called internally by `Load`, but usable standalone. |
 | `LoadMySQL() MySQLConfig` | Reads MySQL settings from env vars. |
 | `LoadPostgreSQL() PostgreSQLConfig` | Reads PostgreSQL settings from env vars. |
-| `LoadRedis() RedisConfig` | Reads Redis settings from env vars. |
+| `LoadCache() CacheConfig` | Reads cache settings from env vars. |
 | `LoadLogger() LoggerConfig` | Reads logger settings from env vars. |
 
 ### mysql
@@ -174,12 +174,12 @@ Supported field types: `string`, `bool`, all integer kinds, `float32`/`float64`,
 |----------|-------------|
 | `Init() (*sql.DB, error)` | Reads PostgreSQL config from env, opens and pings a connection pool. |
 
-### redis
+### cache
 
 | Function | Description |
 |----------|-------------|
-| `Init() (*RedisInstance, error)` | Reads Redis config from env, creates and pings a client with the key-prefixing hook attached. |
-| `(RedisInstance) Close() error` | Closes the underlying client. |
+| `Init() (*CacheInstance, error)` | Reads cache config from env, creates and pings a client with the key-prefixing hook attached. |
+| `(CacheInstance) Close() error` | Closes the underlying client. |
 
 ### logger
 
