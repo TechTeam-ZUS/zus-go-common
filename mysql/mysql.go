@@ -42,7 +42,7 @@ func Init() (*sql.DB, error) {
 			return fmt.Errorf("ping mysql: %w", pingErr)
 		}
 		return nil
-	})
+	}, "MySQL Connection")
 
 	if err != nil {
 		logger.Fatal("mysql: failed to connect after retries", "error", err.Error())

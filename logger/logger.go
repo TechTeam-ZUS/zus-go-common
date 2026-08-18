@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -59,6 +60,18 @@ func Debug(msg string, args ...any) { GetLogger().Debug(msg, args...) }
 func Warn(msg string, args ...any)  { GetLogger().Warn(msg, args...) }
 func Error(msg string, args ...any) { GetLogger().Error(msg, args...) }
 func Fatal(msg string, args ...any) { GetLogger().Error(msg, args...); os.Exit(1) }
+
+// Infof, Debugf, Warnf, Errorf, and Fatalf are printf-style variants: format
+// is resolved via fmt.Sprintf before logging, for callers building a message
+// dynamically instead of attaching structured key-value fields.
+func Infof(format string, args ...any)  { GetLogger().Info(fmt.Sprintf(format, args...)) }
+func Debugf(format string, args ...any) { GetLogger().Debug(fmt.Sprintf(format, args...)) }
+func Warnf(format string, args ...any)  { GetLogger().Warn(fmt.Sprintf(format, args...)) }
+func Errorf(format string, args ...any) { GetLogger().Error(fmt.Sprintf(format, args...)) }
+func Fatalf(format string, args ...any) {
+	GetLogger().Error(fmt.Sprintf(format, args...))
+	os.Exit(1)
+}
 
 func parseLevel(level string) slog.Level {
 	l, ok := levels[level]

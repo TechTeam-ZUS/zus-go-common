@@ -42,7 +42,7 @@ func Init() (*sql.DB, error) {
 			return fmt.Errorf("ping postgres: %w", pingErr)
 		}
 		return nil
-	})
+	}, "Postgres Connection")
 
 	if err != nil {
 		logger.Fatal("postgres: failed to connect after retries", "error", err.Error())

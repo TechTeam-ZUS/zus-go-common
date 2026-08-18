@@ -8,9 +8,9 @@ import (
 
 const RetryDelay = 2 * time.Second
 
-// Do calls fn up to attempts times, waiting delay between tries.
+// Do calls fn up to attempts times, waiting delay between tries. name to identifies what's being retried in the log line.
 // Returns nil on first success, or the last error if every attempt fails.
-func Do(attempts int, delay time.Duration, fn func() error) error {
+func Do(attempts int, delay time.Duration, fn func() error, name string) error {
 	if attempts < 1 {
 		attempts = 1
 	}
@@ -21,7 +21,7 @@ func Do(attempts int, delay time.Duration, fn func() error) error {
 			return nil
 		}
 
-		logger.Warn("Retrying, attempts: %d/%d", i+1, attempts)
+		logger.Warnf("Retrying %s (attempt %d/%d): %s", name, i+1, attempts, err)
 		if i < attempts-1 {
 			time.Sleep(delay)
 		}

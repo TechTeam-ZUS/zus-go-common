@@ -40,7 +40,7 @@ func Init() (*CacheInstance, error) {
 			return fmt.Errorf("ping cache: %w", pingErr)
 		}
 		return nil
-	})
+	}, "Cache Connection")
 
 	if err != nil {
 		logger.Fatal("cache: failed to connect after retries", "error", err.Error())

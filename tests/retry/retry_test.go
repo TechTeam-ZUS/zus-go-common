@@ -12,11 +12,11 @@ import (
 
 func TestDo(t *testing.T) {
 	tests := []struct {
-		name            string
-		attempts        int
-		failuresBefore  int
-		expectedErr     bool
-		expectedCalls   int
+		name           string
+		attempts       int
+		failuresBefore int
+		expectedErr    bool
+		expectedCalls  int
 	}{
 		{name: "succeeds first try", attempts: 3, failuresBefore: 0, expectedErr: false, expectedCalls: 1},
 		{name: "succeeds after 2 failures", attempts: 3, failuresBefore: 2, expectedErr: false, expectedCalls: 3},
@@ -33,7 +33,7 @@ func TestDo(t *testing.T) {
 					return errors.New("boom")
 				}
 				return nil
-			})
+			}, "svc")
 
 			if tt.expectedErr {
 				assert.Error(t, err)

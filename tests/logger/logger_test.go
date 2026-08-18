@@ -59,6 +59,43 @@ func TestInit(t *testing.T) {
 	}
 }
 
+func TestPrintfVariants(t *testing.T) {
+	tests := []struct {
+		name        string
+		log         func()
+		expectedMsg string
+	}{
+		{name: "Infof", log: func() { logger.Infof("retrying %s (%d/%d)", "mysql", 1, 3) }, expectedMsg: "retrying mysql (1/3)"},
+		{name: "Warnf", log: func() { logger.Warnf("attempt %d failed: %s", 2, "timeout") }, expectedMsg: "attempt 2 failed: timeout"},
+		{name: "Errorf", log: func() { logger.Errorf("cache %s unreachable", "host:6379") }, expectedMsg: "cache host:6379 unreachable"},
+		{name: "Debugf", log: func() { logger.Debugf("value=%d", 42) }, expectedMsg: "value=42"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("LOG_HANDLER_TYPE", "json")
+			t.Setenv("LOG_LEVEL", "Debug")
+
+			r, w, err := os.Pipe()
+			require.NoError(t, err)
+			origStdout := os.Stdout
+			os.Stdout = w
+			logger.Init()
+
+			tt.log()
+
+			w.Close()
+			os.Stdout = origStdout
+			out, err := io.ReadAll(r)
+			require.NoError(t, err)
+
+			var line map[string]any
+			require.NoError(t, json.Unmarshal(out, &line))
+			assert.Equal(t, tt.expectedMsg, line["msg"])
+		})
+	}
+}
+
 func TestWithContextAndFromContext(t *testing.T) {
 	tests := []struct {
 		name         string
