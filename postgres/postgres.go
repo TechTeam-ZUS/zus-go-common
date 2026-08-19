@@ -23,29 +23,33 @@ func Init() (*sql.DB, error) {
 
 	var db *sql.DB
 	err := retry.Do(cfg.RetryCount, retry.RetryDelay, func() error {
-		var openErr error
-		db, openErr = sql.Open("pgx", dsn(cfg))
-		if openErr != nil {
-			return fmt.Errorf("open postgres connection: %w", openErr)
+		db, err := sql.Open("pgx", dsn(cfg))
+		if err != nil {
+			return err
 		}
 
 		db.SetMaxOpenConns(cfg.MaxOpenConns)
 		db.SetMaxIdleConns(cfg.MaxIdleConns)
 		db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 
+		if err != nil {
+			logger.Fatal("postgres: failed to connect after retries", "error", err.Error())
+		}
+
 		//ping timeout for 10 seconds
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if pingErr := db.PingContext(ctx); pingErr != nil {
+		if err = db.PingContext(ctx); err != nil {
 			_ = db.Close()
-			return fmt.Errorf("ping postgres: %w", pingErr)
+			return err
 		}
+
 		return nil
 	}, "Postgres Connection")
 
 	if err != nil {
-		logger.Fatal("postgres: failed to connect after retries", "error", err.Error())
+		return nil, fmt.Errorf("Failed to connect Postgres: %w", err)
 	}
 
 	return db, nil

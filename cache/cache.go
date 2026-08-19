@@ -35,15 +35,15 @@ func Init() (*CacheInstance, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if pingErr := client.Ping(ctx).Err(); pingErr != nil {
+		if err := client.Ping(ctx).Err(); err != nil {
 			_ = client.Close()
-			return fmt.Errorf("ping cache: %w", pingErr)
+			return err
 		}
 		return nil
 	}, "Cache Connection")
 
 	if err != nil {
-		logger.Fatal("cache: failed to connect after retries", "error", err.Error())
+		logger.Fatal("Failed to connect cache server", "error", err.Error())
 	}
 
 	return &CacheInstance{client}, nil

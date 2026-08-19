@@ -79,3 +79,11 @@ func LoadLogger() LoggerConfig {
 		HandlerType: envOrDefault("LOG_HANDLER_TYPE", "text"),
 	}
 }
+
+func LoadSaga() SagaConfig {
+	return SagaConfig{
+		Host:       os.Getenv("SAGA_HOST"),
+		Namespace:  envOrDefault("SAGA_NAMESPACE", "Dev"),
+		RetryCount: envIntOrDefault("SAGA_RETRY_COUNT", 3),
+	}
+}

@@ -49,3 +49,10 @@ type LoggerConfig struct {
 	ServiceName string
 	HandlerType string
 }
+
+// Saga Config
+type SagaConfig struct {
+	Host       string
+	Namespace  string
+	RetryCount int
+}

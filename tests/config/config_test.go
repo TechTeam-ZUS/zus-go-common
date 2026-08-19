@@ -132,6 +132,38 @@ func TestLoadCache(t *testing.T) {
 	}
 }
 
+func TestLoadSaga(t *testing.T) {
+	tests := []struct {
+		name     string
+		env      map[string]string
+		expected config.SagaConfig
+	}{
+		{
+			name:     "defaults",
+			env:      map[string]string{},
+			expected: config.SagaConfig{Namespace: "Dev", RetryCount: 3},
+		},
+		{
+			name: "env overrides",
+			env: map[string]string{
+				"SAGA_HOST": "temporal.internal:7233", "SAGA_NAMESPACE": "prod", "SAGA_RETRY_COUNT": "5",
+			},
+			expected: config.SagaConfig{
+				Host: "temporal.internal:7233", Namespace: "prod", RetryCount: 5,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for k, v := range tt.env {
+				t.Setenv(k, v)
+			}
+			assert.Equal(t, tt.expected, config.LoadSaga())
+		})
+	}
+}
+
 func TestLoadLogger(t *testing.T) {
 	tests := []struct {
 		name     string
