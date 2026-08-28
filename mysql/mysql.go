@@ -22,23 +22,24 @@ func Init() (*sql.DB, error) {
 
 	var db *sql.DB
 	err := retry.Do(cfg.RetryCount, retry.RetryDelay, func() error {
-		db, err := sql.Open("mysql", dsn(cfg))
+		conn, err := sql.Open("mysql", dsn(cfg))
 		if err != nil {
 			return err
 		}
 
-		db.SetMaxOpenConns(cfg.MaxOpenConns)
-		db.SetMaxIdleConns(cfg.MaxIdleConns)
-		db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+		conn.SetMaxOpenConns(cfg.MaxOpenConns)
+		conn.SetMaxIdleConns(cfg.MaxIdleConns)
+		conn.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 		//ping timeout for 10 seconds
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if err = db.PingContext(ctx); err != nil {
-			_ = db.Close()
+		if err = conn.PingContext(ctx); err != nil {
+			_ = conn.Close()
 			return err
 		}
 
+		db = conn
 		return nil
 	}, "MySQL Connection")
 

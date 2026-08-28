@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/TechTeam-ZUS/zus-go-common/config"
-	"github.com/TechTeam-ZUS/zus-go-common/logger"
 	"github.com/TechTeam-ZUS/zus-go-common/retry"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -23,28 +22,24 @@ func Init() (*sql.DB, error) {
 
 	var db *sql.DB
 	err := retry.Do(cfg.RetryCount, retry.RetryDelay, func() error {
-		db, err := sql.Open("pgx", dsn(cfg))
+		conn, err := sql.Open("mysql", dsn(cfg))
 		if err != nil {
 			return err
 		}
 
-		db.SetMaxOpenConns(cfg.MaxOpenConns)
-		db.SetMaxIdleConns(cfg.MaxIdleConns)
-		db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
-
-		if err != nil {
-			logger.Fatal("postgres: failed to connect after retries", "error", err.Error())
-		}
-
+		conn.SetMaxOpenConns(cfg.MaxOpenConns)
+		conn.SetMaxIdleConns(cfg.MaxIdleConns)
+		conn.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 		//ping timeout for 10 seconds
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if err = db.PingContext(ctx); err != nil {
-			_ = db.Close()
+		if err = conn.PingContext(ctx); err != nil {
+			_ = conn.Close()
 			return err
 		}
 
+		db = conn
 		return nil
 	}, "Postgres Connection")
 
