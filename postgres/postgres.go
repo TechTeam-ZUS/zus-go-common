@@ -22,7 +22,7 @@ func Init() (*sql.DB, error) {
 
 	var db *sql.DB
 	err := retry.Do(cfg.RetryCount, retry.RetryDelay, func() error {
-		conn, err := sql.Open("mysql", dsn(cfg))
+		conn, err := sql.Open("pgx", dsn(cfg))
 		if err != nil {
 			return err
 		}
