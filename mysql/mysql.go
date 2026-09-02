@@ -20,9 +20,19 @@ func Init() (*sql.DB, error) {
 		return nil, fmt.Errorf("mysql database name is required")
 	}
 
+	return tryConnect(cfg)
+}
+
+func InitWithCustomConfig(cfg config.MySQLConfig) (*sql.DB, error) {
+	return tryConnect(cfg)
+}
+
+func tryConnect(cfg config.MySQLConfig) (*sql.DB, error) {
+	dsn := dsn(cfg)
+
 	var db *sql.DB
 	err := retry.Do(cfg.RetryCount, retry.RetryDelay, func() error {
-		conn, err := sql.Open("mysql", dsn(cfg))
+		conn, err := sql.Open("mysql", dsn)
 		if err != nil {
 			return err
 		}
@@ -43,11 +53,7 @@ func Init() (*sql.DB, error) {
 		return nil
 	}, "MySQL Connection")
 
-	if err != nil {
-		return nil, fmt.Errorf("Failed to connect MySQL: %w", err)
-	}
-
-	return db, nil
+	return db, err
 }
 
 func dsn(cfg config.MySQLConfig) string {
