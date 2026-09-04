@@ -8,13 +8,14 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-// RouteRegistrar registers routes on r. auth is passed through so the
-// registrar decides per-route/group whether to apply auth.Verify.
-type RouteRegistrar func(r chi.Router, auth Authenticator)
+// RouteRegistrar registers routes on r. It closes over whatever
+// Authenticator(s) it needs (zero, one, or several) - NewRouter has no
+// opinion on auth.
+type RouteRegistrar func(r chi.Router)
 
 // NewRouter builds the base router with standard middleware, then hands
 // control to each registrar to register its own routes.
-func NewRouter(auth Authenticator, routes ...RouteRegistrar) http.Handler {
+func NewRouter(routes ...RouteRegistrar) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.Compress(5))
@@ -25,7 +26,7 @@ func NewRouter(auth Authenticator, routes ...RouteRegistrar) http.Handler {
 	r.Use(JSONResponseMiddleware)
 
 	for _, register := range routes {
-		register(r, auth)
+		register(r)
 	}
 
 	return r

@@ -1,10 +1,12 @@
 package middleware_test
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,6 +18,29 @@ import (
 
 	"github.com/TechTeam-ZUS/zus-go-common/middleware"
 )
+
+// mockRevocationCheck returns a TokenValidation simulating a pure
+// revocation/store check: passes ctx through unchanged, or fails with err.
+func mockRevocationCheck(err error) middleware.TokenValidation {
+	return func(ctx context.Context, token *jwt.Token) (context.Context, error) {
+		return ctx, err
+	}
+}
+
+// mockEnrichment returns a TokenValidation that replicates the old
+// sub-claim-to-UserIDKey behavior, or always returns the given error.
+func mockEnrichment(err error) middleware.TokenValidation {
+	return func(ctx context.Context, token *jwt.Token) (context.Context, error) {
+		if err != nil {
+			return ctx, err
+		}
+		userID, gerr := token.Claims.GetSubject()
+		if gerr != nil || userID == "" {
+			return ctx, errors.New("missing subject")
+		}
+		return context.WithValue(ctx, middleware.UserIDKey, userID), nil
+	}
+}
 
 func generateRSAKeyPair(t *testing.T) (*rsa.PrivateKey, string) {
 	t.Helper()
@@ -75,7 +100,7 @@ func TestNewAuthMiddleware(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			auth, err := middleware.NewAuthMiddleware(tt.secret)
+			auth, err := middleware.NewAuthMiddleware(tt.secret, nil)
 			if tt.expectedErr {
 				require.Error(t, err)
 				assert.Nil(t, auth)
@@ -90,20 +115,18 @@ func TestNewAuthMiddleware(t *testing.T) {
 func TestAuthMiddleware_Verify(t *testing.T) {
 	key, pubPEM := generateRSAKeyPair(t)
 	otherKey, _ := generateRSAKeyPair(t)
-	auth, err := middleware.NewAuthMiddleware(pubPEM)
-	require.NoError(t, err)
 
 	tests := []struct {
 		name           string
 		authHeader     string
+		validate       middleware.TokenValidation
 		expectedStatus int
 		expectedUserID string
 	}{
 		{
-			name:           "valid token",
+			name:           "valid token, no validate",
 			authHeader:     "Bearer " + signToken(t, key, "user-123", time.Now().Add(time.Hour)),
 			expectedStatus: http.StatusOK,
-			expectedUserID: "user-123",
 		},
 		{
 			name:           "missing header",
@@ -126,11 +149,6 @@ func TestAuthMiddleware_Verify(t *testing.T) {
 			expectedStatus: http.StatusUnauthorized,
 		},
 		{
-			name:           "missing subject",
-			authHeader:     "Bearer " + signToken(t, key, "", time.Now().Add(time.Hour)),
-			expectedStatus: http.StatusUnauthorized,
-		},
-		{
 			name:           "not-yet-valid token",
 			authHeader:     "Bearer " + signTokenNotYetValid(t, key, "user-123"),
 			expectedStatus: http.StatusUnauthorized,
@@ -144,7 +162,6 @@ func TestAuthMiddleware_Verify(t *testing.T) {
 			name:           "token without Bearer prefix is still accepted",
 			authHeader:     signToken(t, key, "user-123", time.Now().Add(time.Hour)),
 			expectedStatus: http.StatusOK,
-			expectedUserID: "user-123",
 		},
 		{
 			name:           "lowercase bearer prefix is not stripped, fails to parse",
@@ -156,10 +173,44 @@ func TestAuthMiddleware_Verify(t *testing.T) {
 			authHeader:     "Bearer ",
 			expectedStatus: http.StatusUnauthorized,
 		},
+		{
+			name:           "missing subject rejected by validate",
+			authHeader:     "Bearer " + signToken(t, key, "", time.Now().Add(time.Hour)),
+			validate:       mockEnrichment(nil),
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "validate sets userID in context",
+			authHeader:     "Bearer " + signToken(t, key, "user-123", time.Now().Add(time.Hour)),
+			validate:       mockEnrichment(nil),
+			expectedStatus: http.StatusOK,
+			expectedUserID: "user-123",
+		},
+		{
+			name:           "validate error rejects request",
+			authHeader:     "Bearer " + signToken(t, key, "user-123", time.Now().Add(time.Hour)),
+			validate:       mockEnrichment(errors.New("enrich failed")),
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "revocation check accepts token",
+			authHeader:     "Bearer " + signToken(t, key, "user-123", time.Now().Add(time.Hour)),
+			validate:       mockRevocationCheck(nil),
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "revocation check rejects revoked token",
+			authHeader:     "Bearer " + signToken(t, key, "user-123", time.Now().Add(time.Hour)),
+			validate:       mockRevocationCheck(errors.New("token revoked")),
+			expectedStatus: http.StatusUnauthorized,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			auth, err := middleware.NewAuthMiddleware(pubPEM, tt.validate)
+			require.NoError(t, err)
+
 			var gotUserID any
 			next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotUserID = r.Context().Value(middleware.UserIDKey)

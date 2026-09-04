@@ -23,18 +23,25 @@ type Authenticator interface {
 	Verify(next http.Handler) http.Handler
 }
 
+// TokenValidation checks a parsed token against external state (e.g.
+// revocation or DB-tracked expiry) and returns ctx enriched with
+// claims-derived values. Returning an error 401s the request. Optional -
+// nil skips this check and leaves ctx untouched.
+type TokenValidation func(ctx context.Context, token *jwt.Token) (context.Context, error)
+
 type AuthMiddleware struct {
-	publicKey *rsa.PublicKey
+	publicKey       *rsa.PublicKey
+	tokenValidation TokenValidation
 }
 
-func NewAuthMiddleware(secret string) (*AuthMiddleware, error) {
+func NewAuthMiddleware(secret string, v TokenValidation) (*AuthMiddleware, error) {
 	rawStr := secret
 	rawStr = strings.ReplaceAll(rawStr, "\\n", "\n")
 	key, err := jwt.ParseRSAPublicKeyFromPEM([]byte(rawStr))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse RSA public key: %v", err)
 	}
-	return &AuthMiddleware{publicKey: key}, nil
+	return &AuthMiddleware{publicKey: key, tokenValidation: v}, nil
 }
 
 func (m *AuthMiddleware) Verify(next http.Handler) http.Handler {
@@ -54,18 +61,22 @@ func (m *AuthMiddleware) Verify(next http.Handler) http.Handler {
 		})
 
 		if err != nil || !token.Valid {
-			logger.Warn("token validation failed", "reason", sanitizeTokenError(err))
+			logger.Debug("token validation failed", "reason", sanitizeTokenError(err))
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		userID, err := token.Claims.GetSubject()
-		if err != nil || userID == "" {
-			logger.FromContext(r.Context()).Warn("user not found", "error", err)
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
+		ctx := r.Context()
+		if m.tokenValidation != nil {
+			var verr error
+			ctx, verr = m.tokenValidation(ctx, token)
+			if verr != nil {
+				logger.FromContext(r.Context()).Debug("token validation failed", "error", verr)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
 		}
-		ctx := context.WithValue(r.Context(), UserIDKey, userID)
+
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

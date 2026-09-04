@@ -26,8 +26,8 @@ func (mockAuthenticator) Verify(next http.Handler) http.Handler {
 
 func TestNewRouter(t *testing.T) {
 	auth := mockAuthenticator{}
-	router := middleware.NewRouter(auth,
-		func(r chi.Router, auth middleware.Authenticator) {
+	router := middleware.NewRouter(
+		func(r chi.Router) {
 			r.Get("/public", func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
@@ -68,8 +68,8 @@ func TestNewRouter(t *testing.T) {
 }
 
 func TestNewRouter_AppliesJSONContentType(t *testing.T) {
-	router := middleware.NewRouter(mockAuthenticator{},
-		func(r chi.Router, auth middleware.Authenticator) {
+	router := middleware.NewRouter(
+		func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
@@ -85,9 +85,9 @@ func TestNewRouter_AppliesJSONContentType(t *testing.T) {
 
 func TestNewRouter_CallsAllRegistrars(t *testing.T) {
 	called := []string{}
-	router := middleware.NewRouter(mockAuthenticator{},
-		func(r chi.Router, auth middleware.Authenticator) { called = append(called, "first") },
-		func(r chi.Router, auth middleware.Authenticator) { called = append(called, "second") },
+	router := middleware.NewRouter(
+		func(r chi.Router) { called = append(called, "first") },
+		func(r chi.Router) { called = append(called, "second") },
 	)
 
 	assert.NotNil(t, router)
